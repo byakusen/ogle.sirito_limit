@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>シリト・リミット10</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef3f8; --ink:#243244; --line:#2b3a4e;
+    --yellow:#ffe94a; --yellow-deep:#f5c400;
+    --red:#ff5252; --red-deep:#d32f2f;
+    --blue:#1a56db; --blue-deep:#123c9b; --green:#0f9d58;
+    --paper:#ffffff; --grey:#c9d3de;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%; overflow:hidden;}
+  body{
+    font-family:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','Yu Gothic',sans-serif;
+    background:var(--bg);
+    background-image:linear-gradient(#dfe8f1 1px,transparent 1px),linear-gradient(90deg,#dfe8f1 1px,transparent 1px);
+    background-size:28px 28px;
+    color:var(--ink);
+  }
+  .app{height:100vh; height:100dvh; display:flex; flex-direction:column; gap:8px; padding:8px 12px 10px; max-width:1400px; margin:0 auto;}
+
+  button{
+    font-family:inherit; font-weight:800; font-size:15px; cursor:pointer; white-space:nowrap;
+    border:3px solid var(--line); border-radius:11px; padding:6px 12px;
+    background:var(--paper); color:var(--ink); box-shadow:0 3px 0 var(--line); transition:transform .05s;
+  }
+  button:active{transform:translateY(3px); box-shadow:none;}
+  button:focus-visible{outline:3px solid var(--blue); outline-offset:2px;}
+  button.primary{background:var(--blue); color:#fff; border-color:var(--blue-deep); box-shadow:0 3px 0 var(--blue-deep);}
+  button.warn{background:#fff2f2; color:var(--red-deep);}
+  button:disabled{opacity:.4; cursor:not-allowed; transform:none;}
+
+  /* ===== ヘッダー ===== */
+  header{display:flex; align-items:center; gap:10px; flex:0 0 auto;}
+  .title{display:flex; align-items:center; gap:4px; user-select:none;}
+  .title .tile{display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:8px; font-weight:800; font-size:18px; background:var(--paper); border:3px solid var(--line); box-shadow:0 2px 0 var(--line);}
+  .title .tile.y{background:var(--yellow);}
+  .title .tile.r{background:var(--red); color:#fff; border-color:var(--red-deep); box-shadow:0 2px 0 var(--red-deep);}
+  .title .ten{font-weight:800; font-size:23px; margin-left:2px; color:var(--blue);}
+  .spacer{flex:1;}
+  .score{display:flex; align-items:baseline; gap:7px; border:4px solid var(--blue); border-radius:12px; background:var(--paper); padding:2px 14px; box-shadow:0 3px 0 var(--blue-deep);}
+  .score .label{font-size:12px; font-weight:800; color:var(--blue);}
+  .score .num{font-size:34px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums;}
+  .timer{display:flex; align-items:center; gap:7px; background:var(--paper); border:3px solid var(--line); border-radius:12px; padding:3px 8px; box-shadow:0 3px 0 var(--line);}
+  .timer .clock{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; min-width:88px; text-align:center;}
+  .timer.warn .clock{color:var(--red-deep); animation:blink 1s steps(2) infinite;}
+  @keyframes blink{50%{opacity:.35;}}
+
+  /* ===== ボード ===== */
+  .board{flex:1 1 auto; min-height:0; display:grid; grid-template-columns:repeat(10,1fr); gap:8px;
+    background:var(--paper); border:3px solid var(--line); border-radius:16px; padding:10px; box-shadow:0 4px 0 var(--line);}
+  .col{display:grid; grid-template-rows:repeat(5,1fr); gap:6px; min-height:0;}
+  .cell{display:flex; align-items:center; justify-content:center; min-height:0;
+    border:2.5px solid var(--line); border-radius:9px; font-size:clamp(16px,3.4vh,34px); font-weight:700;
+    background:#fff; cursor:pointer; user-select:none; position:relative; transition:background .12s,transform .05s;}
+  .cell:active{transform:scale(.94);}
+  .cell.empty{visibility:hidden; pointer-events:none;}
+  .cell.free{background:#eceff3; border-color:var(--grey); color:#7c8898;}
+  .cell.free::after{content:'∞'; position:absolute; bottom:1px; right:4px; font-size:10px; font-weight:800; color:#9aa7b6;}
+  .cell.c1{background:var(--yellow); border-color:var(--yellow-deep);}
+  .cell.c2{background:var(--red); border-color:var(--red-deep); color:#fff;}
+  .cell.need{border-color:var(--blue); border-width:4px; background:#eaf1ff; animation:need 1s ease-in-out infinite;}
+  @keyframes need{0%,100%{box-shadow:0 0 0 0 rgba(26,86,219,.6);}50%{box-shadow:0 0 0 7px rgba(26,86,219,0);}}
+  .cell.pop{animation:pop .3s;}
+  @keyframes pop{40%{transform:scale(1.18);}}
+
+  /* ===== 入力バー ===== */
+  .inputbar{flex:0 0 auto; display:flex; align-items:center; gap:10px;
+    background:var(--paper); border:3px solid var(--line); border-radius:14px; padding:8px 12px; box-shadow:0 4px 0 var(--line);}
+  .hint{font-size:15px; font-weight:800; flex:0 0 auto;}
+  .hint .kana{display:inline-flex; align-items:center; justify-content:center; min-width:38px; height:38px; padding:0 6px; margin:0 2px; background:var(--yellow); border:3px solid var(--yellow-deep); border-radius:9px; font-size:22px;}
+  .current{flex:1 1 auto; display:flex; align-items:center; gap:5px; min-height:46px; min-width:0; overflow-x:auto; padding:2px;}
+  .current .ct{display:inline-flex; align-items:center; justify-content:center; min-width:40px; height:40px; padding:0 4px; background:#fff; border:3px solid var(--line); border-radius:9px; font-size:24px; font-weight:700; animation:pop .25s;}
+  .current .placeholder{color:#9aa7b6; font-size:16px; font-weight:700;}
+  .mods{display:flex; gap:4px; flex:0 0 auto;}
+  .mods button{width:44px; padding:6px 0; font-size:18px;}
+  .msg{flex:0 0 auto; font-size:14px; font-weight:800; max-width:200px; text-align:right;}
+  .msg.err{color:var(--red-deep);} .msg.ok{color:var(--green);}
+
+  /* ===== 履歴バー ===== */
+  .histbar{flex:0 0 auto; display:flex; align-items:center; gap:10px;
+    background:var(--paper); border:3px solid var(--line); border-radius:14px; padding:6px 12px; box-shadow:0 4px 0 var(--line);}
+  .histbar .hlabel{font-size:13px; font-weight:800; color:#4b5a6d; flex:0 0 auto;}
+  .words{flex:1 1 auto; display:flex; align-items:center; gap:4px; overflow-x:auto; min-width:0; padding:2px 0;}
+  .word{border:3px solid var(--red); border-radius:8px; background:#fff; padding:3px 10px; font-size:18px; font-weight:700; white-space:nowrap; flex:0 0 auto;}
+  .word.last{background:#fff6d6;}
+  .arrow{color:var(--ink); font-weight:800; font-size:16px; flex:0 0 auto;}
+  .empty-note{color:#93a1b1; font-weight:700; font-size:14px;}
+  .histbar .acts{display:flex; gap:6px; flex:0 0 auto;}
+
+  /* ===== 終了バナー(オーバーレイ) ===== */
+  .overlay{position:fixed; inset:0; background:rgba(20,30,45,.45); display:none; align-items:center; justify-content:center; z-index:20;}
+  .overlay.show{display:flex; animation:fade .2s;}
+  @keyframes fade{from{opacity:0;}}
+  .banner{background:var(--paper); border:5px solid var(--red-deep); border-radius:22px; padding:28px 40px; text-align:center; box-shadow:0 8px 0 var(--red-deep); max-width:90vw; animation:pop .35s;}
+  .banner.time{border-color:var(--blue); box-shadow:0 8px 0 var(--blue-deep);}
+  .banner .head{font-size:26px; font-weight:800; color:var(--red-deep);}
+  .banner.time .head{color:var(--blue);}
+  .banner .big{font-size:44px; font-weight:800; margin:12px 0 18px;}
+  .banner .big small{font-size:20px; color:#6b7a8d;}
+
+  .rulebox{background:var(--paper); border:5px solid var(--blue); border-radius:22px; padding:22px 30px; box-shadow:0 8px 0 var(--blue-deep); max-width:min(680px,92vw); max-height:88vh; overflow-y:auto; animation:pop .3s;}
+  .rulebox h2{font-size:24px; font-weight:800; color:var(--blue); text-align:center; margin-bottom:14px;}
+  .rulebox ol{margin:0 0 6px 24px; line-height:1.85; font-size:16px; font-weight:500;}
+  .rulebox li{margin-bottom:9px;}
+  .rulebox .hl{padding:1px 7px; border-radius:6px; font-weight:800; border:2px solid;}
+  .rulebox .hl.y{background:var(--yellow); border-color:var(--yellow-deep);}
+  .rulebox .hl.r{background:var(--red); color:#fff; border-color:var(--red-deep);}
+  .rulebox .free-ex{background:#eceff3; border:2px solid var(--grey); border-radius:6px; padding:1px 8px; font-weight:800; color:#5a6675; letter-spacing:3px;}
+  .rule-actions{text-align:center; margin-top:12px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header>
+    <div class="title" aria-label="シリト・リミット10">
+      <span class="tile">シ</span><span class="tile y">リ</span><span class="tile">ト</span><span class="tile">・</span><span class="tile y">リ</span><span class="tile">ミ</span><span class="tile r">ッ</span><span class="tile">ト</span><span class="ten">10</span>
+    </div>
+    <div class="spacer"></div>
+    <button id="rulesBtn" title="ルールを見る">? ルール</button>
+    <div class="score"><span class="label">のこりの文字</span><span class="num" id="scoreNum">44</span></div>
+    <div class="timer" id="timerBox">
+      <span class="clock" id="clock">10:00</span>
+      <button id="timerBtn">スタート</button>
+      <button id="timerReset">⏱</button>
+    </div>
+  </header>
+
+  <div class="board" id="board" aria-label="ひらがなボード"></div>
+
+  <div class="inputbar">
+    <div class="hint" id="hint">すきな 文字から!(3文字以上)</div>
+    <div class="current" id="current"><span class="placeholder">↑ 文字を クリックして ことばを つくろう</span></div>
+    <div class="mods">
+      <button id="mDaku" title="゛をつける">゛</button>
+      <button id="mHanda" title="゜をつける">゜</button>
+      <button id="mSmall" title="小さくする">小</button>
+      <button id="mDel" title="1文字けす">⌫</button>
+    </div>
+    <button class="primary" id="submitBtn">けってい</button>
+    <div class="msg" id="msg" aria-live="polite"></div>
+  </div>
+
+  <div class="histbar">
+    <span class="hlabel">つかった ことば</span>
+    <div class="words" id="wordsBox"><span class="empty-note">まだ ありません</span></div>
+    <div class="acts">
+      <button id="undoBtn">↩ やりなおし</button>
+      <button class="warn" id="resetBtn">はじめから</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="banner" id="banner">
+    <div class="head" id="bHead"></div>
+    <div class="big" id="bBig"></div>
+    <button class="primary" id="bClose">とじる</button>
+    <button id="bRestart">もういちど</button>
+  </div>
+</div>
+
+<div class="overlay" id="rulesOverlay">
+  <div class="rulebox">
+    <h2>あそびかた</h2>
+    <ol>
+      <li>3文字以上の ことばで <b>しりとり</b>を つづける。文字を クリックして「けってい」!</li>
+      <li>1回つかった文字は <span class="hl y">黄色</span>。<b>2回つかったら <span class="hl r">赤</span>になって、そこで おわり!</b>(しりとりの つなぎの文字は かぞえません)</li>
+      <li><b>「ん」で おわったら</b> そこで おわり。</li>
+      <li>「は」「ば」「ぱ」は おなじ文字。(れい:しごと<b>ば</b> → <b>パ</b>イロット)<br>にごり(゛)・はんにごり(゜)・小さい文字は、右下の <b>゛ ゜ 小</b> ボタンで つけられます。</li>
+      <li><span class="free-ex">っ ー ん</span> は なんかい つかっても OK。</li>
+      <li>まちがえたら <b>⌫</b>(1文字けす)か <b>↩やりなおし</b>で なおせる。</li>
+      <li>10分間で、<b>「のこりの文字」が 少ないチームの かち!</b></li>
+    </ol>
+    <div class="rule-actions"><button class="primary" id="rulesClose">とじる</button></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const COLS=[
+    ['わ','','っ','ー','ん'],['ら','り','る','れ','ろ'],['や','','ゆ','','よ'],
+    ['ま','み','む','め','も'],['は','ひ','ふ','へ','ほ'],['な','に','ぬ','ね','の'],
+    ['た','ち','つ','て','と'],['さ','し','す','せ','そ'],['か','き','く','け','こ'],
+    ['あ','い','う','え','お']
+  ];
+  const FREE=new Set(['っ','ー','ん']);
+  const BASE={ 'が':'か','ぎ':'き','ぐ':'く','げ':'け','ご':'こ','ざ':'さ','じ':'し','ず':'す','ぜ':'せ','ぞ':'そ',
+    'だ':'た','ぢ':'ち','づ':'つ','で':'て','ど':'と','ば':'は','び':'ひ','ぶ':'ふ','べ':'へ','ぼ':'ほ',
+    'ぱ':'は','ぴ':'ひ','ぷ':'ふ','ぺ':'へ','ぽ':'ほ','ゃ':'や','ゅ':'ゆ','ょ':'よ',
+    'ぁ':'あ','ぃ':'い','ぅ':'う','ぇ':'え','ぉ':'お','ゎ':'わ','ゔ':'う','を':'お' };
+  const VARIANTS={'か':'か/が','き':'き/ぎ','く':'く/ぐ','け':'け/げ','こ':'こ/ご','さ':'さ/ざ','し':'し/じ','す':'す/ず','せ':'せ/ぜ','そ':'そ/ぞ',
+    'た':'た/だ','ち':'ち/ぢ','つ':'つ/づ','て':'て/で','と':'と/ど','は':'は/ば/ぱ','ひ':'ひ/び/ぴ','ふ':'ふ/ぶ/ぷ','へ':'へ/べ/ぺ','ほ':'ほ/ぼ/ぽ'};
+  const DAKUTEN={'か':'が','き':'ぎ','く':'ぐ','け':'げ','こ':'ご','さ':'ざ','し':'じ','す':'ず','せ':'ぜ','そ':'ぞ','た':'だ','ち':'ぢ','つ':'づ','て':'で','と':'ど','は':'ば','ひ':'び','ふ':'ぶ','へ':'べ','ほ':'ぼ','う':'ゔ'};
+  const HANDAKU={'は':'ぱ','ひ':'ぴ','ふ':'ぷ','へ':'ぺ','ほ':'ぽ'};
+  const SMALL={'つ':'っ','や':'ゃ','ゆ':'ゅ','よ':'ょ','あ':'ぁ','い':'ぃ','う':'ぅ','え':'ぇ','お':'ぉ','わ':'ゎ'};
+  const TO_BASE={};
+  [DAKUTEN,HANDAKU,SMALL].forEach(m=>{for(const k in m) TO_BASE[m[k]]=k;});
+  function plainBase(ch){ return TO_BASE[ch]||ch; }
+  const ALL_BASES=COLS.flat().filter(c=>c&&!FREE.has(c));
+  const BAD_START=new Set(['っ','ー','ん','ゃ','ゅ','ょ','ぁ','ぃ','ぅ','ぇ','ぉ','ゎ']);
+
+  let words=[];          // 確定した {disp,norm}
+  let currentChars=[];   // 作りかけ
+  let counts={};
+  let gameOver=false, overChar='', overReason='', timeUp=false;
+
+  function baseOf(ch){ return BASE[ch]||ch; }
+  function lastChain(norm){ const cs=[...norm]; for(let i=cs.length-1;i>=0;i--){ if(!FREE.has(cs[i])) return baseOf(cs[i]); } return null; }
+  function requiredChar(){ for(let i=words.length-1;i>=0;i--){ const c=lastChain(words[i].norm); if(c) return c; } return null; }
+
+  function recompute(){
+    counts={}; gameOver=false; overChar=''; overReason='';
+    words.forEach((w,wi)=>{
+      const isFirst=wi===0; const cs=[...w.norm];
+      cs.forEach((ch,i)=>{
+        if(FREE.has(ch)) return;
+        if(!isFirst && i===0) return;        // つなぎの文字は数えない
+        const b=baseOf(ch);
+        counts[b]=(counts[b]||0)+1;
+        if(counts[b]>=2 && !gameOver){ gameOver=true; overChar=b; overReason='double'; }
+      });
+      // 「ん」で終わったら終了
+      if(!gameOver && cs[cs.length-1]==='ん'){ gameOver=true; overChar='ん'; overReason='nn'; }
+    });
+  }
+
+  /* ---- ボード生成 ---- */
+  const boardEl=document.getElementById('board');
+  const cellEls={};
+  COLS.forEach(col=>{
+    const c=document.createElement('div'); c.className='col';
+    col.forEach(ch=>{
+      const cell=document.createElement('div');
+      if(!ch){ cell.className='cell empty'; }
+      else if(FREE.has(ch)){ cell.className='cell free'; cell.textContent=ch; cell.addEventListener('click',()=>addChar(ch)); }
+      else{ cell.className='cell'; cell.textContent=ch; cell.addEventListener('click',()=>addChar(ch)); cellEls[ch]=cell; }
+      c.appendChild(cell);
+    });
+    boardEl.appendChild(c);
+  });
+
+  const scoreNum=document.getElementById('scoreNum');
+  const wordsBox=document.getElementById('wordsBox');
+  const hint=document.getElementById('hint');
+  const currentEl=document.getElementById('current');
+  const msg=document.getElementById('msg');
+  const submitBtn=document.getElementById('submitBtn');
+  const undoBtn=document.getElementById('undoBtn');
+  const overlay=document.getElementById('overlay');
+
+  function showMsg(t,ok){ msg.textContent=t; msg.className='msg '+(ok?'ok':'err'); }
+
+  function addChar(ch){
+    if(gameOver||timeUp) return;
+    currentChars.push(ch);
+    showMsg('',true);
+    renderCurrent();
+  }
+  function applyMod(map){
+    if(gameOver||timeUp) return;
+    if(currentChars.length===0) return;
+    const i=currentChars.length-1, cur=currentChars[i], b=plainBase(cur), tgt=map[b];
+    if(!tgt) return;
+    currentChars[i]=(cur===tgt)?b:tgt;
+    renderCurrent();
+  }
+  document.getElementById('mDaku').addEventListener('click',()=>applyMod(DAKUTEN));
+  document.getElementById('mHanda').addEventListener('click',()=>applyMod(HANDAKU));
+  document.getElementById('mSmall').addEventListener('click',()=>applyMod(SMALL));
+  document.getElementById('mDel').addEventListener('click',()=>{ if(currentChars.length){ currentChars.pop(); renderCurrent(); } });
+
+  function renderCurrent(){
+    currentEl.innerHTML='';
+    if(currentChars.length===0){
+      const p=document.createElement('span'); p.className='placeholder'; p.textContent='↑ 文字を クリックして ことばを つくろう';
+      currentEl.appendChild(p);
+    }else{
+      currentChars.forEach(ch=>{ const t=document.createElement('span'); t.className='ct'; t.textContent=ch; currentEl.appendChild(t); });
+    }
+    updateNeed();
+  }
+
+  function submitWord(){
+    if(gameOver||timeUp) return;
+    if(currentChars.length===0){ showMsg('文字を えらんでね',false); return; }
+    const disp=currentChars.join('');
+    const norm=disp;
+    const cs=[...norm];
+    if(cs.length<3){ showMsg('3文字以上に してね',false); return; }
+    // --- あからさまなデタラメ対策 ---
+    if(BAD_START.has(cs[0])){ showMsg('その文字からは はじめられないよ',false); return; }
+    let run=1, maxRun=1;
+    for(let i=1;i<cs.length;i++){ if(cs[i]===cs[i-1]){ run++; if(run>maxRun) maxRun=run; } else run=1; }
+    if(cs.every(c=>c===cs[0]) || maxRun>=3){ showMsg('その ことば あるかな?',false); return; }
+    // --------------------------------
+    const req=requiredChar();
+    if(req && baseOf(cs[0])!==req){ showMsg('「'+(VARIANTS[req]||req)+'」から!',false); return; }
+    if(words.some(w=>w.norm===norm)){ showMsg('もう つかったよ',false); return; }
+    words.push({disp,norm});
+    currentChars=[];
+    // 新しく色がかわる文字
+    const isFirst=words.length===1; const changed=[];
+    cs.forEach((ch,i)=>{ if(FREE.has(ch))return; if(!isFirst&&i===0)return; changed.push(baseOf(ch)); });
+    showMsg('「'+disp+'」 OK!',true);
+    refresh(changed);
+  }
+  submitBtn.addEventListener('click',submitWord);
+
+  undoBtn.addEventListener('click',()=>{
+    if(currentChars.length){ currentChars=[]; showMsg('けしました',true); renderCurrent(); return; }
+    if(words.length){ const w=words.pop(); showMsg('「'+w.disp+'」を とりけし',true); refresh(); }
+  });
+
+  document.getElementById('resetBtn').addEventListener('click',()=>{
+    if(!confirm('はじめから やりなおしますか?')) return; doReset();
+  });
+  function doReset(){ words=[]; currentChars=[]; timeUp=false; resetTimer(); showMsg('',true); refresh(); }
+
+  function updateNeed(){
+    const req=(currentChars.length===0)?requiredChar():null;
+    for(const b of ALL_BASES) cellEls[b].classList.toggle('need', !gameOver&&!timeUp&&req===b);
+  }
+
+  function refresh(pop){
+    recompute();
+    for(const b of ALL_BASES){
+      const n=Math.min(counts[b]||0,2), el=cellEls[b];
+      el.classList.remove('c1','c2','pop');
+      if(n===1) el.classList.add('c1');
+      if(n===2) el.classList.add('c2');
+      if(pop&&pop.includes(b)){ void el.offsetWidth; el.classList.add('pop'); }
+    }
+    const remain=ALL_BASES.filter(b=>!(counts[b]>0)).length;
+    scoreNum.textContent=remain;
+
+    wordsBox.innerHTML='';
+    if(words.length===0){ wordsBox.innerHTML='<span class="empty-note">まだ ありません</span>'; }
+    else words.forEach((w,i)=>{
+      if(i>0){ const a=document.createElement('span'); a.className='arrow'; a.textContent='→'; wordsBox.appendChild(a); }
+      const el=document.createElement('span'); el.className='word'+(i===words.length-1?' last':''); el.textContent=w.disp; wordsBox.appendChild(el);
+    });
+    wordsBox.scrollLeft=wordsBox.scrollWidth;
+
+    const req=requiredChar();
+    if(gameOver) hint.innerHTML='ゲームしゅうりょう!';
+    else if(req) hint.innerHTML='つぎは <span class="kana">'+(VARIANTS[req]||req)+'</span> から!';
+    else hint.textContent='すきな 文字から!(3文字以上)';
+
+    renderCurrent();
+
+    if(gameOver||timeUp) showBanner(remain);
+    undoBtn.disabled=(words.length===0 && currentChars.length===0);
+  }
+
+  function showBanner(remain){
+    const b=document.getElementById('banner'), head=document.getElementById('bHead'), big=document.getElementById('bBig');
+    b.classList.toggle('time', timeUp && !gameOver);
+    if(gameOver) head.textContent = (overReason==='nn') ? '「ん」で おわったよ!' : '「'+overChar+'」を 2回 つかったよ!';
+    else head.textContent = 'タイムアップ!';
+    big.innerHTML = 'きろく <small>のこり</small> '+remain+' <small>文字</small>';
+    overlay.classList.add('show');
+  }
+  document.getElementById('bClose').addEventListener('click',()=>overlay.classList.remove('show'));
+  document.getElementById('bRestart').addEventListener('click',()=>{ overlay.classList.remove('show'); doReset(); });
+
+  const rulesOverlay=document.getElementById('rulesOverlay');
+  document.getElementById('rulesBtn').addEventListener('click',()=>rulesOverlay.classList.add('show'));
+  document.getElementById('rulesClose').addEventListener('click',()=>rulesOverlay.classList.remove('show'));
+  rulesOverlay.addEventListener('click',e=>{ if(e.target===rulesOverlay) rulesOverlay.classList.remove('show'); });
+
+  /* ---- タイマー ---- */
+  const TOTAL=600; let timeLeft=TOTAL, ticking=null;
+  const clock=document.getElementById('clock'), timerBtn=document.getElementById('timerBtn'), timerBox=document.getElementById('timerBox');
+  function drawClock(){ const m=Math.floor(timeLeft/60),s=timeLeft%60; clock.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0'); timerBox.classList.toggle('warn',ticking&&timeLeft<=60); }
+  function tick(){ timeLeft--; if(timeLeft<=0){ timeLeft=0; clearInterval(ticking); ticking=null; timerBtn.textContent='スタート'; timeUp=true; refresh(); } drawClock(); }
+  timerBtn.addEventListener('click',()=>{
+    if(ticking){ clearInterval(ticking); ticking=null; timerBtn.textContent='つづき'; }
+    else{ if(timeLeft<=0) return; ticking=setInterval(tick,1000); timerBtn.textContent='いちじ停止'; }
+    drawClock();
+  });
+  function resetTimer(){ clearInterval(ticking); ticking=null; timeLeft=TOTAL; timeUp=false; timerBtn.textContent='スタート'; drawClock(); }
+  document.getElementById('timerReset').addEventListener('click',()=>{ resetTimer(); refresh(); });
+
+  drawClock(); refresh();
+})();
+</script>
+</body>
+</html>
